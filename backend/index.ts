@@ -319,9 +319,34 @@ app.get("/orders-by-user/:user_id", async (req, res, next) => {
 });
 
 app.get("/addresses/:id", async (req, res, next) => {
-    // TODO: Use Redis
+  const id = req.params.id;
+  const key = "addresses-key";
+  const address = await redis.get(`${key}-${id}`);
 
-    return res.status(200);
+  return res.json({
+    result: {
+      address
+    }
+  });
+});
+
+app.post("/addresses", async (req, res, next) => {
+  const address = req.body.address;
+
+  const key = "addresses-key";
+  const id = await redis.incr(key);
+  try {
+    // Transaction
+    const multi = redis.multi();
+    multi
+    .set(`${key}-${id.toString()}`, address);
+    await multi.exec();
+
+    res.status(201)
+      .json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.listen(port, () => {
